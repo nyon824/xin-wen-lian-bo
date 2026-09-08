@@ -93,13 +93,27 @@ const getNewsList = async date => {
  * @returns {String} 简介内容
  */
 const getAbstract = async link => {
-	const HTML = await fetch(link);
-	const dom = new JSDOM(HTML);
-	const abstract = dom.window.document.querySelector(
-		'#page_body > div.allcontent > div.video18847 > div.playingCon > div.nrjianjie_shadow > div > ul > li:nth-child(1) > p'
-	).innerHTML.replaceAll('；', "；\n\n").replaceAll('：', "：\n\n");
-	console.log('成功获取新闻简介');
-	return abstract;
+	try {
+		const HTML = await fetch(link);
+		const dom = new JSDOM(HTML);
+		
+		// 优先使用原选择器，若找不到则尝试宽松选择器
+		const el = dom.window.document.querySelector(
+			'#page_body > div.allcontent > div.video18847 > div.playingCon > div.nrjianjie_shadow > div > ul > li:nth-child(1) > p'
+		) || dom.window.document.querySelector('.nrjianjie_shadow p') || dom.window.document.querySelector('.cnt_bd p');
+
+		if (!el) {
+			console.warn(`⚠️ 未能在该页面找到简介元素: ${link}`);
+			return ''; // 没找到时返回空字符串，避免整个工作流崩溃
+		}
+
+		const abstract = el.innerHTML.replaceAll('；', "；\n\n").replaceAll('：', "：\n\n");
+		console.log('成功获取新闻简介');
+		return abstract;
+	} catch (error) {
+		console.error(`❌ 获取新闻简介异常: ${link}`, error);
+		return ''; // 发生网络或解析错误时兜底，保证流程继续往下走
+	}
 }
 
 /**
